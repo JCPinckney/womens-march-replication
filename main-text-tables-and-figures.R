@@ -211,8 +211,6 @@ ggsave("protest-map.png",protest.map,bg = "transparent",width = 7,height = 4,dpi
 # Produce predictions for marginal effects figure
 
 fig.data <- working.data %>% 
-  select(-geometry) %>% 
-  as_tibble() %>% 
   reframe(across(c(dem.share.14,white.perc,hisp.perc,black.perc,unemp.2017,poverty.2017,log.median.inc.2017,log.pop,wtd.rain.historic,wtd.temp.historic,wtd.rain,temp.diff), ~ mean(.,na.rm = T)),
           urban.binary = 1,
           near.march.log = 0,

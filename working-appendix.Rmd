@@ -273,36 +273,32 @@ texreg(no.outlier.tests$ivmods,
 The models of Indivisible group formation in the main text are linear probability models to facilitate comparison with the other instrumental variable models. However, given that linear probability models are not bounded between 1 and 0, they can yield misleading predicted values. Table \@ref(tab:indivAlt) reports three alternate instrumental variable specifications of the Indivisible group dependent variable. Models 1 and 2 have the same binary dependent variable, indicating the presence of any Indivisible group, but models the second stage of the IV model with a logistic regression. Models 3 and 4 use a count of the number of Indivisible groups as the dependent variable, using a Poisson regression in the second stage. Models 5 and 6 transform this count variable into a continuous variable using the natural logarithm (plus 1), and use OLS in the second stage. All alternate specifications show substantively identical results to those reported in the main text, indicating the size of the Women's March not only made the formation of any Indivisible group more likely, but also increased the number of Indivisible groups at the county level.
 
 ```{r indivAlt, results='asis'}
-working.data.ivglm <- working.data %>% 
-  select(-geometry) %>% 
-  as_tibble() #Strip spatial aspect of data so it can work with IVGLM function
-
 # LOGIT MODELS 
 
 # 1st Stage Model of Logged Marchers
 
 log.march.1st.stage <- glm(log.marchers ~ wtd.rain + temp.diff 
                       + dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic,
-                       data = working.data.ivglm,family = "gaussian")
+                       data = working.data,family = "gaussian")
 
 # 2nd Stage model
 
 log.march.2nd.stage <- glm(indiv.binary ~ log.marchers 
                                + dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic, 
-                             data = working.data.ivglm,family = "binomial"(link = "logit"))
+                             data = working.data,family = "binomial"(link = "logit"))
 
 # 1st Stage Model of Marchers PC
 
 marchers.pc.1st.stage <- glm(marchers.pc ~ wtd.rain + temp.diff 
                            + dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic
-                           , data = working.data.ivglm,family = "gaussian")
+                           , data = working.data,family = "gaussian")
 
 
 # 2nd Stage model
 
 marchers.pc.2nd.stage <- glm(indiv.binary ~ marchers.pc
                            + dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic
-                           , data = working.data.ivglm,family = "binomial"(link = "logit"))
+                           , data = working.data,family = "binomial"(link = "logit"))
 
 
 
@@ -311,13 +307,13 @@ marchers.pc.2nd.stage <- glm(indiv.binary ~ marchers.pc
 log.march.iv.model <- ivglm(estmethod = "ts",
                               fitX.LZ = log.march.1st.stage, 
                               fitY.LX = log.march.2nd.stage, 
-                              data = working.data.ivglm,
+                              data = working.data,
                               ctrl= T)
 
 marchers.pc.iv.model <- ivglm(estmethod = "ts",
                               fitX.LZ = marchers.pc.1st.stage, 
                               fitY.LX = marchers.pc.2nd.stage, 
-                              data = working.data.ivglm,
+                              data = working.data,
                               ctrl= T)
 
 
@@ -327,25 +323,25 @@ num.indiv.log.stage.2 <- glm(indiv.groups ~ log.marchers + dem.share.14 + urban.
                              black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + 
                              near.march.log + wtd.rain.historic + wtd.temp.historic,
                              family = "poisson",
-                             data = working.data.ivglm)
+                             data = working.data)
 
 num.indiv.pc.stage.2 <- glm(indiv.groups ~ marchers.pc + dem.share.14 + urban.binary + white.perc + hisp.perc + 
                              black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + 
                              near.march.log + wtd.rain.historic + wtd.temp.historic,
                              family = "poisson",
-                             data = working.data.ivglm)
+                             data = working.data)
 
 
 log.marchers.iv.poisson <- ivglm(estmethod = "ts",
                                  fitX.LZ = log.march.1st.stage,
                                  fitY.LX = num.indiv.log.stage.2,
-                                 data = working.data.ivglm,
+                                 data = working.data,
                                  ctrl = T)
 
 marchers.pc.iv.poisson <- ivglm(estmethod = "ts",
                                  fitX.LZ = marchers.pc.1st.stage,
                                  fitY.LX = num.indiv.pc.stage.2,
-                                 data = working.data.ivglm,
+                                 data = working.data,
                                  ctrl = T)
 
 # ADD LM MODELS WITH LOGGED NUMBER OF INDIVISIBLE GROUPS
