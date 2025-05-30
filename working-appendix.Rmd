@@ -1,0 +1,477 @@
+---
+title: "Appendix for 'Turning Protest Into Power: How the Women's March Worked''"
+author: "Jonathan Pinckney"
+output: 
+  bookdown::pdf_document2:
+    extra_dependencies: ["float"]
+header-includes:
+  - \usepackage{setspace}\doublespacing
+  - \pagenumbering{gobble}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,fig.pos = "H", out.extra = "")
+
+library(tidyverse)
+library(stargazer)
+library(ivreg)
+library(ivtools)
+library(texreg)
+library(sf)
+
+working.data <- read_rds("working-data.rds")
+
+main.coef.map <- list("wtd.rain" = "Precipitation",
+                      "temp.diff" = "Temp. Deviation",
+                       "log.marchers" = "Marchers (log)",
+                       "marchers.pc" ="Marchers PC",
+                       "dem.share.14" = "Dem. Vote Share 2014",
+                       "dem.2014.donations.share" = "Dem. Donat. Share 2014",
+                       "log.total.vote.14" = "2014 Voter Turnout (log)",
+                       "urban.binary" = "Rural/Urban",
+                       "white.perc" = "Percent White",
+                       "hisp.perc" = "Percent Hispanic",
+                       "black.perc" = "Percent Black",
+                       "unemp.2017" = "Unemployment Rate",
+                       "poverty.2017" = "Poverty Rate",
+                       "log.median.inc.2017" = "Median Income (log)",
+                       "log.pop" = "Population (log)",
+                       "near.march.log" = "Nearby Marchers (log)",
+                       "wtd.rain.historic" = "Historic Av. Prcp.",
+                       "wtd.temp.historic" = "Historic Av. Temp.",
+                       "(Intercept)" = "Constant")
+
+```
+
+ \pagebreak
+ 
+# First-Stage Models
+
+Table \@ref(tab:firstStage) shows the first stage models for logged marchers (Model 1) and marchers per capita (Model 2). The two instrumental variables are precipitation and temperature deviation. Note that in the marchers per capita models, the measure of weighted rainfall does not reach a *p* < 0.05 level of significance. I keep the measure of weighted rainfall as an instrument in my primary models given its theoretical importance and usage in prior studies on the subject, but conduct robustness checks below dropping the measure of rainfall from the instrumental variable models.
+
+```{r firstStage, results = 'asis'}
+log.march.1st.stage <- lm(log.marchers ~ wtd.rain + temp.diff 
+                      + dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic,
+                       data = working.data)
+
+marchers.pc.1st.stage <- lm(marchers.pc ~ wtd.rain + temp.diff
+                      + dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic,
+                       data = working.data)
+
+texreg(list(log.march.1st.stage,marchers.pc.1st.stage),
+          custom.coef.map = main.coef.map,
+          digits = 4,
+          include.rsquared = F,
+          include.adjrs = F,
+       label = "tab:firstStage",
+       caption = "First Stage IV Model Regressions",
+       caption.above = T,
+       float.pos = "h"
+          )
+
+```
+\pagebreak
+
+# Change Over Baseline Dependent Variable Models
+
+The primary models of vote share and donations share in the main text use 2018 values and control for the 2014 values. In Tables \@ref(tab:demChange) and \@ref(tab:donatChange) below I replicate Tables 2 and 4 from the main text but replace the 2018 values of democratic vote share and democratic donations share with the change from 2014 to 2018. Since there was no significant creation of Indivisible groups before the 2017 Women's March I am unable to create a similar model for this dependent variable. Note that the 2014 vote share and donations share are still included in the model as control variables, since they influence variation in the change over baseline that is possible for both vote shares and donation shares.
+
+```{r demChange, results = 'asis'}
+# Run models that will produce tables below
+
+# Vote Share Models
+
+naive.change.mod.1 <- lm(dem.share.shift ~ log.marchers
+                  + dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log, data = working.data)
+
+naive.change.mod.2 <- lm(dem.share.shift ~ marchers.pc 
+                  + dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log, data = working.data)
+
+full.rain.change.mod.1 <- ivreg(dem.share.shift ~  
+                        dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic
+                        | log.marchers
+                        | wtd.rain + temp.diff
+                        , data = working.data)
+
+
+full.rain.change.mod.2 <- ivreg(dem.share.shift ~ 
+                        dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic
+                        | marchers.pc
+                        | wtd.rain + temp.diff
+                        , data = working.data)
+
+
+# Donations Models
+
+naive.donat.change.mod.1 <- lm(dem.donations.shift ~ log.marchers
+                  + dem.2014.donations.share + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log, data = working.data)
+
+naive.donat.change.mod.2 <- lm(dem.donations.shift ~ marchers.pc 
+                  + dem.2014.donations.share + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log, data = working.data)
+
+# 2-Stage Model
+
+rain.donat.change.mod.1 <- ivreg(dem.donations.shift ~  
+                               dem.2014.donations.share + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic
+                             | log.marchers
+                             | wtd.rain + temp.diff
+                             , data = working.data)
+
+
+rain.donat.change.mod.2 <- ivreg(dem.donations.shift ~ 
+                               dem.2014.donations.share + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic                              | marchers.pc
+                             | wtd.rain + temp.diff
+                             , data = working.data)
+
+texreg(list(naive.change.mod.1,naive.change.mod.2,full.rain.change.mod.1,full.rain.change.mod.2),
+       custom.coef.map = main.coef.map,
+       custom.header = list("Naive OLS" = 1:2,"Instrumental Models" = 3:4),
+       caption = "Change in Dem. Vote Share Models",
+       label = "tab:demChange",
+       caption.above = T,
+       digits = 3,
+       float.pos = "h",
+       include.rsquared = FALSE,
+       include.adjrs = FALSE)
+```
+
+```{r donatChange,results='asis'}
+texreg(list(naive.donat.change.mod.1,naive.donat.change.mod.2,rain.donat.change.mod.1,rain.donat.change.mod.2),
+       custom.coef.map = main.coef.map,
+       custom.header = list("Naive OLS" = 1:2,"Instrumental Models" = 3:4),
+       caption = "Change in Dem. Donations Share Models",
+       label = "tab:donatChange",
+       caption.above = T,
+       digits = 3,
+       float.pos = "h",
+       include.rsquared = FALSE,
+       include.adjrs = FALSE)
+```
+
+
+
+# Alternative Instrumental Models
+
+To further test the robustness of weather variables on the day of the Women's March as instruments for participation in the march, I conducted a series of replications of my main analysis, substituting my preferred instruments (weighted rainfall and deviations from average temperature), with alternate weather-based instruments.
+
+Figures \@ref(fig:logAltIns) and \@ref(fig:pcAltIns) presents coefficient plots summarizing the results of these robustness checks across four alternate instrument specifications, my three main dependent variables (2018 Democratic vote share, creation of Indivisible Groups, and 2018 Democratic donations share), and two operationalizations of Women's March participation (logged marchers and marchers per capita). All models include the full set of control variables reported in the main text.
+
+The *alt rain* models substitute my primary rainfall measure, which was generated through spatial weighting using Voronoi tessellation, with a measure generated using spatial K-nearest neighbor matching. In this alternate measure, each march was paired with its 3 closest weather stations, and precipitation measured as the average of these three stations' precipitation levels, weighted by the inverse of weather station distance to the march. In counties where no march took place, the KNN matching was done with the three closest stations to the county centroid.
+
+The *temp alone* models drop precipitation entirely and use temperature deviations from the historical average (measured in degrees Fahrenheit) as the sole instrument for Women's March participation.
+
+The *wtd temp* models substitute the measure of temperature deviations from the historical average with a measure of weighted temperature, generated using Voronoi tessellation identical to the measure of weighted rainfall used in the main text.
+
+Finally the *comf temp* models substitute the measure of temperature deviations from the historical average with a measure of absolute temperature deviation from a "comfortable temperature" range of 60 to 75 degrees Fahrenheit. 
+
+As both figures show, the effect of instrumented Women's March participation remains positive and significant at *p* < 0.05 across all model variations, with effect sizes substantively identical across instruments. All 24 models pass a weak instruments test at *p* < 0.05. All models also pass a Wu-Hausman test, except, as in the main text, for the models of democratic vote share as the dependent variable with logged marchers as the independent variable, and the model of democratic vote share with marchers per capita as the independent variable and *comf temp* as the instrument. All models with multiple instruments pass the Sargan test for over-identification - the Sargan test is inapplicable to instrumental variable models with a single instrument, and thus cannot be run on the *temp alone* models. 
+
+```{r logAltIns, fig.cap = "Logged Marchers Alternative Instrument Models"}
+alt.instrument <- c("wtd.rain.alt + temp.diff","temp.diff","wtd.rain + wtd.temp","wtd.rain + temp.diff.comf")
+dv <- c("dem.share.18","indiv.binary","dem.2018.donations.share")
+iv <- c("~ log.marchers +","~ marchers.pc +")
+common.controls <- "urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic"
+
+alt.in.tests <- tibble(expand_grid(alt.instrument,iv,dv)) %>%
+  rowwise() %>% 
+  mutate(lagged.dv = case_when(dv == "dem.share.18" ~ "dem.share.14 +",
+                               dv == "dem.2018.donations.share" ~ "dem.2014.donations.share +",
+                               dv == "indiv.binary" ~ "dem.share.14 +"),
+         ivreg.form = paste(dv,iv,lagged.dv,common.controls,"|",lagged.dv,common.controls,"+", alt.instrument),
+         ivmods = map(ivreg.form, function(x){
+           ivreg(x,data = working.data)
+         })) %>% 
+  ungroup() %>% 
+  mutate(iv.coef = map_dbl(ivmods, ~ coef(.)[2]),
+         confints = map(ivmods, ~confint(.)[2, ]),
+         lower = map_dbl(confints,1),
+         upper = map_dbl(confints,2),
+         passed.weak = map_lgl(ivmods, function(mod){
+           summary(mod,diagnostics =T)[["diagnostics"]][1,4] < 0.05
+         }),
+         passed.wu.hausman = map_lgl(ivmods, function(mod){
+           summary(mod,diagnostics =T)[["diagnostics"]][2,4] < 0.05
+         }),
+         passed.sargan = map_lgl(ivmods, function(mod){
+           summary(mod,diagnostics =T)[["diagnostics"]][3,4] > 0.05
+         })
+         
+           ) 
+
+ggplot(filter(alt.in.tests,iv == "~ log.marchers +"),aes(y = iv.coef,x = dv,color = alt.instrument)) +
+  geom_point(position = position_dodge(width = 0.3)) +
+  geom_errorbar(aes(ymin = lower,ymax = upper),position = position_dodge(width = 0.3),width = 0.15) +
+  scale_color_viridis_d(name = "Alternative\nInstrument",labels = c("temp alone","comf temp","wtd temp","alt rain")) +
+  scale_x_discrete(labels = c("2018 Donations Share","2018 Vote Share","Indivisible")) +
+  labs(title = "",y = "Coefficient",x = "") +
+  theme_bw()
+  
+
+```
+
+```{r pcAltIns, fig.cap = "Marchers Per Capita Alternative Instrument Models"}
+ggplot(filter(alt.in.tests,iv == "~ marchers.pc +"),aes(y = iv.coef,x = dv,color = alt.instrument)) +
+  geom_point(position = position_dodge(width = 0.3)) +
+  geom_errorbar(aes(ymin = lower,ymax = upper),position = position_dodge(width = 0.3),width = 0.1) +
+  scale_color_viridis_d(name = "Alternative\nInstrument",labels = c("temp alone","comf temp","wtd temp","alt rain")) +
+  scale_x_discrete(labels = c("2018 Donations Share","2018 Vote Share","Indivisible")) +
+  labs(title = "",y = "Coefficient Size",x = "") +
+  theme_bw()
+```
+
+# Dropping Outlier Models
+
+While most Women's Marches were locally-organized and had mostly local participants, a few of the largest marches were regional or, in the case of Washington, DC, even national magnets with participants coming from all across the country. Thus, the activation mechanism for shifting county-level vote share that I propose in the main text would be less applicable for these cases, and if these large marches are driving my results, it would put my interpretation in question. To test whether these outliers are driving my results, I drop the `r nrow(filter(working.data,marchers > 100000))` counties that had marches with more than 100,000 participants from the analysis. Specifically, these are the marches in Washington DC, New York, Los Angeles, Chicago, San Francisco, Oakland, Boston, Seattle, and Denver. I then replicate my primary instrumental variable models across both operationalizations of march size (logged marchers and marchers per capita) and all three dependent variables (Democratic vote share, Democratic donation share, and Indivisible Group formation). As Table \@ref(tab:noOutliers) shows, results are substantively identical
+
+```{r noOutliers, results='asis'}
+no.outliers.data <- working.data %>% 
+  filter(marchers < 100000)
+
+dv <- c("dem.share.18","indiv.binary","dem.2018.donations.share")
+iv <- c("~ log.marchers +","~ marchers.pc +")
+common.controls <- "urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic"
+
+no.outlier.tests <- tibble(expand_grid(dv,iv)) %>%
+  rowwise() %>% 
+  mutate(lagged.dv = case_when(dv == "dem.share.18" ~ "dem.share.14 +",
+                               dv == "dem.2018.donations.share" ~ "dem.2014.donations.share +",
+                               dv == "indiv.binary" ~ "dem.share.14 +"),
+         ivreg.form = paste(dv,iv,lagged.dv,common.controls,"|",lagged.dv,common.controls,"+", "wtd.rain + temp.diff"),
+         ivmods = map(ivreg.form, function(x){
+           ivreg(x,data = no.outliers.data)
+         })) %>% 
+  ungroup() %>% 
+  mutate(iv.coef = map_dbl(ivmods, ~ coef(.)[2]),
+         confints = map(ivmods, ~confint(.)[2, ]),
+         lower = map_dbl(confints,1),
+         upper = map_dbl(confints,2),
+         passed.weak = map_lgl(ivmods, function(mod){
+           summary(mod,diagnostics =T)[["diagnostics"]][1,4] < 0.05
+         }),
+         passed.wu.hausman = map_lgl(ivmods, function(mod){
+           summary(mod,diagnostics =T)[["diagnostics"]][2,4] < 0.05
+         }),
+         passed.sargan = map_lgl(ivmods, function(mod){
+           summary(mod,diagnostics =T)[["diagnostics"]][3,4] > 0.05
+         })
+         
+           ) 
+
+texreg(no.outlier.tests$ivmods,
+       custom.coef.map = main.coef.map,
+       custom.header = list("Dem. Vote Share" = 1:2,"Indivisible" = 3:4,"Dem. Donat. Share" = 5:6),
+       label = "tab:noOutliers",
+       caption = "IV Models Without Outliers",
+       include.rsquared = FALSE,
+       include.adjrs = FALSE)
+  
+```
+
+
+# Alternative Indivisible Models
+
+The models of Indivisible group formation in the main text are linear probability models to facilitate comparison with the other instrumental variable models. However, given that linear probability models are not bounded between 1 and 0, they can yield misleading predicted values. Table \@ref(tab:indivAlt) reports three alternate instrumental variable specifications of the Indivisible group dependent variable. Models 1 and 2 have the same binary dependent variable, indicating the presence of any Indivisible group, but models the second stage of the IV model with a logistic regression. Models 3 and 4 use a count of the number of Indivisible groups as the dependent variable, using a Poisson regression in the second stage. Models 5 and 6 transform this count variable into a continuous variable using the natural logarithm (plus 1), and use OLS in the second stage. All alternate specifications show substantively identical results to those reported in the main text, indicating the size of the Women's March not only made the formation of any Indivisible group more likely, but also increased the number of Indivisible groups at the county level.
+
+```{r indivAlt, results='asis'}
+working.data.ivglm <- working.data %>% 
+  select(-geometry) %>% 
+  as_tibble() #Strip spatial aspect of data so it can work with IVGLM function
+
+# LOGIT MODELS 
+
+# 1st Stage Model of Logged Marchers
+
+log.march.1st.stage <- glm(log.marchers ~ wtd.rain + temp.diff 
+                      + dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic,
+                       data = working.data.ivglm,family = "gaussian")
+
+# 2nd Stage model
+
+log.march.2nd.stage <- glm(indiv.binary ~ log.marchers 
+                               + dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic, 
+                             data = working.data.ivglm,family = "binomial"(link = "logit"))
+
+# 1st Stage Model of Marchers PC
+
+marchers.pc.1st.stage <- glm(marchers.pc ~ wtd.rain + temp.diff 
+                           + dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic
+                           , data = working.data.ivglm,family = "gaussian")
+
+
+# 2nd Stage model
+
+marchers.pc.2nd.stage <- glm(indiv.binary ~ marchers.pc
+                           + dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic
+                           , data = working.data.ivglm,family = "binomial"(link = "logit"))
+
+
+
+# Probability of An Indivisible Group
+
+log.march.iv.model <- ivglm(estmethod = "ts",
+                              fitX.LZ = log.march.1st.stage, 
+                              fitY.LX = log.march.2nd.stage, 
+                              data = working.data.ivglm,
+                              ctrl= T)
+
+marchers.pc.iv.model <- ivglm(estmethod = "ts",
+                              fitX.LZ = marchers.pc.1st.stage, 
+                              fitY.LX = marchers.pc.2nd.stage, 
+                              data = working.data.ivglm,
+                              ctrl= T)
+
+
+# ADD POISSON/NB MODELS WITH NUMBER OF INDIVISIBLE GROUPS
+
+num.indiv.log.stage.2 <- glm(indiv.groups ~ log.marchers + dem.share.14 + urban.binary + white.perc + hisp.perc + 
+                             black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + 
+                             near.march.log + wtd.rain.historic + wtd.temp.historic,
+                             family = "poisson",
+                             data = working.data.ivglm)
+
+num.indiv.pc.stage.2 <- glm(indiv.groups ~ marchers.pc + dem.share.14 + urban.binary + white.perc + hisp.perc + 
+                             black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + 
+                             near.march.log + wtd.rain.historic + wtd.temp.historic,
+                             family = "poisson",
+                             data = working.data.ivglm)
+
+
+log.marchers.iv.poisson <- ivglm(estmethod = "ts",
+                                 fitX.LZ = log.march.1st.stage,
+                                 fitY.LX = num.indiv.log.stage.2,
+                                 data = working.data.ivglm,
+                                 ctrl = T)
+
+marchers.pc.iv.poisson <- ivglm(estmethod = "ts",
+                                 fitX.LZ = marchers.pc.1st.stage,
+                                 fitY.LX = num.indiv.pc.stage.2,
+                                 data = working.data.ivglm,
+                                 ctrl = T)
+
+# ADD LM MODELS WITH LOGGED NUMBER OF INDIVISIBLE GROUPS
+
+log.indiv.log.march.ivreg <- ivreg(log1p(indiv.groups) ~
+                                  dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 +
+                                  poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + 
+                                  wtd.rain.historic + wtd.temp.historic  
+                                | log.marchers
+                                | wtd.rain + temp.diff
+                                , data = working.data)
+  
+log.indiv.march.pc.ivreg <- ivreg(log1p(indiv.groups) ~
+                                  dem.share.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 +
+                                  poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + 
+                                  wtd.rain.historic + wtd.temp.historic  
+                                | marchers.pc
+                                | wtd.rain + temp.diff
+                                , data = working.data)
+
+# Make Table
+
+log.march.summary <- summary(log.march.iv.model)
+
+marchers.pc.summary <- summary(marchers.pc.iv.model)
+
+log.poisson.sum <- summary(log.marchers.iv.poisson)
+
+marchers.pc.poisson.sum <- summary(marchers.pc.iv.poisson)
+
+log.march.table <- createTexreg(coef.names = rownames(log.march.summary$coefficients),
+                          coef = log.march.summary$coefficients[,1],
+                          se = log.march.summary$coefficients[,2],
+                          pvalues = log.march.summary$coefficients[,4]
+                          )
+
+marchers.pc.table <- createTexreg(coef.names = rownames(marchers.pc.summary$coefficients),
+                          coef = marchers.pc.summary$coefficients[,1],
+                          se = marchers.pc.summary$coefficients[,2],
+                          pvalues = marchers.pc.summary$coefficients[,4]
+                          )
+
+log.march.poisson.tab <- createTexreg(coef.names = rownames(log.poisson.sum$coefficients),
+                          coef = log.poisson.sum$coefficients[,1],
+                          se = log.poisson.sum$coefficients[,2],
+                          pvalues = log.poisson.sum$coefficients[,4]
+                          )
+
+marchers.pc.poisson.tab <- createTexreg(coef.names = rownames(marchers.pc.poisson.sum$coefficients),
+                          coef = marchers.pc.poisson.sum$coefficients[,1],
+                          se = marchers.pc.poisson.sum$coefficients[,2],
+                          pvalues = marchers.pc.poisson.sum$coefficients[,4]
+                          )
+
+
+
+indiv.coef.map <- list("log.marchers" = "Marchers (log)",
+                       "marchers.pc" ="Marchers PC",
+                       "dem.share.14" = "Dem. Vote Share 2014",
+                       "urban.binary" = "Rural/Urban",
+                       "white.perc" = "Percent White",
+                       "hisp.perc" = "Percent Hispanic",
+                       "black.perc" = "Percent Black",
+                       "unemp.2017" = "Unemployment Rate",
+                       "poverty.2017" = "Poverty Rate",
+                       "log.median.inc.2017" = "Median Income (log)",
+                       "log.pop" = "Population (log)",
+                       "near.march.log" = "Nearby Marchers (log)",
+                       "wtd.rain.historic" = "Historic Av. Prcp.",
+                       "wtd.temp.historic" = "Historic Av. Temp.",
+                       "(Intercept)" = "Constant")
+
+texreg(list(log.march.table,marchers.pc.table,log.march.poisson.tab,marchers.pc.poisson.tab,log.indiv.log.march.ivreg,log.indiv.march.pc.ivreg),
+       custom.coef.map = indiv.coef.map,
+       custom.header = list("Any Indivisible Group\n(Logit)" = 1:2,
+                            "Number of Groups\n(Poisson)" = 3:4,
+                            "Logged Groups\n(OLS)" = 5:6),
+       caption = "Alternative Indivisible Group Models",
+       label = "tab:indivAlt",
+       caption.above = T,
+       digits = 3,
+       float.pos = "h",
+       custom.gof.rows = list("Num. obs." = c(3050,3050,3050,3050,3050,3050)),
+       include.n = FALSE,
+       include.rsquared = FALSE,
+       include.adjrs = FALSE
+          )
+```
+
+\pagebreak
+
+# Total Voter Turnout Models
+
+Table \@ref(tab:turnout) below reports results of a series of regression models replacing the dependent variable of Democratic vote share with the natural logarithm of total voter turnout in the 2018 election, controlling for logged total voter turnout in the 2014 midterms. All other model specifications are identical to the primary models in the main text. The results show a significant (*p* < 0.001) log-linear positive relationship between both specifications of the independent variable and total voter turnout.  
+
+```{r turnout, results='asis'}
+naive.turnout.mod.1 <- lm(log.total.vote.18 ~ log.marchers +
+                  log.total.vote.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log, data = working.data)
+
+naive.turnout.mod.2 <- lm(log.total.vote.18 ~ marchers.pc 
+                  + log.total.vote.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log, data = working.data)
+
+full.rain.turnout.mod.1 <- ivreg(log.total.vote.18 ~  
+                        log.total.vote.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic
+                        | log.marchers
+                        | wtd.rain + temp.diff
+                        , data = working.data)
+
+
+full.rain.turnout.mod.2 <- ivreg(log.total.vote.18 ~ 
+                        log.total.vote.14 + urban.binary + white.perc + hisp.perc + black.perc + unemp.2017 + poverty.2017 + log.median.inc.2017 + log.pop + near.march.log + wtd.rain.historic + wtd.temp.historic
+                        | marchers.pc
+                        | wtd.rain + temp.diff
+                        , data = working.data)
+
+texreg(list(naive.turnout.mod.1,naive.turnout.mod.2,full.rain.turnout.mod.1,full.rain.turnout.mod.2),
+          custom.coef.map = main.coef.map,
+          custom.header = list("Naive OLS" = 1:2,"Instrumental Models" = 3:4),
+          digits = 4,
+          include.rsquared = F,
+          include.adjrs = F,
+       label = "tab:turnout",
+       caption = "Logged 2018 Voter Turnout Models",
+       caption.above = T,
+       float.pos = "h"
+)
+
+```
+
